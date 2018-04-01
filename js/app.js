@@ -41,11 +41,11 @@ const gameBoard = (() => {
   };
 
   let checkIfOver = (players) => {
-    return won(players[1].sign) || tie(players[0].sign);
+    return won(players[1]) || tie(players[0]);
   };
 
-  let won = (sign) => {
-    let playerBoxes = whichPlayer(sign);
+  let won = (player) => {
+    let playerBoxes = whichPlayer(player.sign);
 
     if (playerBoxes .length < 3) { return false; }
 
@@ -57,7 +57,8 @@ const gameBoard = (() => {
       if (combo.length === 0) {
         board = [];
 
-        interactor.notify(`Player ${sign} has won!`);
+        interactor.notify(`${player.name} has won!`);
+        interactor.highlight(winningCombos[i]);
 
         return true;
       }
@@ -66,13 +67,13 @@ const gameBoard = (() => {
     return false;
   };
 
-  let tie = (sign) => {
+  let tie = (player) => {
     let tie = true;
 
     if (board.length > 1) { return false; }
     if (board.length == 0) { return true; }
 
-    let playerBoxes = whichPlayer(sign);
+    let playerBoxes = whichPlayer(player.sign);
     let otherBoxes  = playerBoxes.slice(0);
 
     otherBoxes.push(board[0]);
@@ -130,7 +131,7 @@ const controller = (() => {
       return false;
     }
 
-    interactor.notify(`Player ${players[0].sign}'s turn`);
+    interactor.notify(`${players[0].name}'s turn`);
 
     players.push(player);
 
@@ -143,35 +144,27 @@ const controller = (() => {
 })();
 
 const interactor = (() => {
-  let board       = document.querySelector('#board');
-  let noticeArea  = document.querySelector('#notice');
+  let boardHolder = document.querySelector('.board-holder');
+  let board       = document.querySelector('.board');
+  let noticeArea  = document.querySelector('.notice');
   let buttonGroup = document.querySelector('.button-group');
 
   let renderBoard = (boxes) => {
     clearBoard();
 
+    board = document.createElement('div');
+    board.classList.add('board');
+
     for (let i = 0; i < boxes.length; i++) { board.appendChild(buildBox(boxes[i])); }
 
-    let resetButton = document.createElement('button');
-    resetButton.classList.add('reset');
-    resetButton.textContent = 'Reset';
-    resetButton.addEventListener('click', reset);
+    boardHolder.appendChild(board);
 
-    buttonGroup.appendChild(resetButton);
-    notify(`Player ${players[0].sign}'s turn`);
+    notify(`${players[0].name}'s turn`);
   };
 
   let notify = (msg) => { noticeArea.textContent = msg; };
 
-  let clearBoard = () => {
-    while (board.firstChild) {
-      board.removeChild(board.firstChild);
-    }
-
-    let resetButton = document.querySelector('.reset');
-
-    if (resetButton) { buttonGroup.removeChild(resetButton); }
-  };
+  let clearBoard = () => { if (board) { boardHolder.removeChild(board); } };
 
   let buildBox = (val) => {
     let box = document.createElement('div');
@@ -183,6 +176,10 @@ const interactor = (() => {
     box.dataset.value = val;
 
     return box;
+  };
+
+  let highlight = (boxes) => {
+    for (let i = 0; i < boxes.length; i++) { board.children[boxes[i]].classList.add('highlight'); }
   };
 
   function checkBox() {
@@ -204,11 +201,29 @@ const interactor = (() => {
 
   function reset() { gameBoard.reset() && gameBoard.render(); };
 
-  function set() { buttonGroup.removeChild(newButton) && gameBoard.render(); }
+  function set() {
+    let inputFields = document.querySelector('.input-fields');
 
-  function restoreBox() { this.className = ''; };
+    x.name = document.querySelector('input[name=name-0]').value || "Player X";
+    o.name = document.querySelector('input[name=name-1]').value || "Player O";
 
-  return { set, reset, renderBoard, notify };
+    buttonGroup.removeChild(newButton) && buttonGroup.parentElement.removeChild(inputFields);
+
+    let resetButton = document.createElement('button');
+    resetButton.classList.add('reset');
+    resetButton.textContent = 'Reset';
+    resetButton.addEventListener('click', reset);
+
+    buttonGroup.appendChild(resetButton);
+
+    gameBoard.render();
+  }
+
+  function restoreBox() {
+    this.classList.remove('free', 'occupied');
+  };
+
+  return { set, reset, renderBoard, notify, highlight };
 })();
 
 let newButton = document.querySelector('.button-group .new');
